@@ -6,10 +6,16 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=node
 
-ifeq ($(CONFIG_NODEJS_20),y)
-PKG_VERSION:=v20.12.2
+ifeq ($(CONFIG_NODEJS_22),y)
+PKG_VERSION:=v22.13.1
 PKG_RELEASE:=1
-PKG_HASH:=d7cbcc5fbfb31e9001f3f0150bbeda59abe5dd7137aaa6273958cd59ce35ced7
+PKG_HASH:=cfce282119390f7e0c2220410924428e90dadcb2df1744c0c4a0e7baae387cc2
+PATCH_DIR:=./patches/v22.x
+else
+ifeq ($(CONFIG_NODEJS_20),y)
+PKG_VERSION:=v20.18.2
+PKG_RELEASE:=1
+PKG_HASH:=69bf81b70f3a95ae0763459f02860c282d7e3a47567c8afaf126cc778176a882
 PATCH_DIR:=./patches/v20.x
 else
 ifeq ($(CONFIG_NODEJS_18),y)
@@ -34,6 +40,7 @@ PKG_VERSION:=v12.22.12
 PKG_RELEASE:=2
 PKG_HASH:=bc42b7f8495b9bfc7f7850dd180bb02a5bdf139cc232b8c6f02a6967e20714f2
 PATCH_DIR:=./patches/v12.x
+endif
 endif
 endif
 endif
@@ -66,7 +73,7 @@ define Package/node
   TITLE:=Node.js is a platform built on Chrome's JavaScript runtime
   URL:=https://nodejs.org/
   DEPENDS:=@(HAS_FPU||KERNEL_MIPS_FPU_EMULATOR||SOFT_FLOAT) @!arc @!armeb @!powerpc \
-	   +libstdcpp +(NODEJS_18||NODEJS_20):libopenssl +zlib +libnghttp2 +libuv \
+	   +libstdcpp +(NODEJS_18||NODEJS_20||NODEJS_22):libopenssl +zlib +libnghttp2 +libuv \
 	   +libcares +libatomic +NODEJS_ICU_SYSTEM:icu +NODEJS_ICU_SYSTEM:icu-full-data
 endef
 
@@ -101,7 +108,7 @@ define Package/node/config
 	choice
 		prompt "Version Selection"
 		default NODEJS_12 if mips||mipsel||mips64||mips64el
-		default NODEJS_18
+		default NODEJS_20
 		help
 		 Select node.js version.
 		 The host package version is also the same.
@@ -124,6 +131,10 @@ define Package/node/config
 		config NODEJS_20
 			depends on !(mips||mipsel||mips64||mips64el)
 			bool "20.x Active LTS"
+			
+		config NODEJS_22
+			depends on !(mips||mipsel||mips64||mips64el)
+			bool "22.x Active LTS"
 	endchoice
 
 	if PACKAGE_node
@@ -178,7 +189,7 @@ CONFIGURE_ARGS:= \
 	--dest-os=linux \
 	--cross-compiling \
 	--shared-zlib \
-	$(if $(CONFIG_NODEJS_18),--shared-openssl) \
+	--shared-openssl \
 	--shared-nghttp2 \
 	--shared-cares \
 	--with-intl=$(if $(CONFIG_NODEJS_ICU_SMALL),small-icu,$(if $(CONFIG_NODEJS_ICU_SYSTEM),system-icu,none)) \
