@@ -1,9 +1,8 @@
 #
 # Copyright (C) 2018-2023 Jeffery To
+# Copyright (C) 2025-2026 George Sapkin
 #
-# This is free software, licensed under the GNU General Public License v2.
-# See /LICENSE for more information.
-#
+# SPDX-License-Identifier: GPL-2.0-only
 
 ifeq ($(origin GO_INCLUDE_DIR),undefined)
   GO_INCLUDE_DIR:=$(dir $(lastword $(MAKEFILE_LIST)))
@@ -147,6 +146,34 @@ GO_HOST_ARCH:=$(call go_arch,$(subst \
   i686,i386,$(HOST_ARCH)))))
 GO_HOST_OS_ARCH:=$(GO_HOST_OS)_$(GO_HOST_ARCH)
 
+# Filter lists for ARM64 cores
+# See https://en.wikipedia.org/wiki/ARM_architecture_family#Cores
+GO_ARM64_V8_0_CORES= \
+  cortex-a34 \
+  cortex-a35 \
+  cortex-a53 \
+  cortex-a57 \
+  cortex-a72 \
+  cortex-a73
+GO_ARM64_V8_2_CORES= \
+  cortex-a55 \
+  cortex-a65 \
+  cortex-a75 \
+  cortex-a76 \
+  cortex-a77 \
+  cortex-a78 \
+  cortex-x1
+GO_ARM64_V9_0_CORES= \
+  cortex-a510 \
+  cortex-a710 \
+  cortex-a715 \
+  cortex-x2 \
+  cortex-x3
+GO_ARM64_V9_2_CORES= \
+  cortex-a520 \
+  cortex-a720 \
+  cortex-x4
+
 ifeq ($(GO_OS_ARCH),$(GO_HOST_OS_ARCH))
   GO_HOST_TARGET_SAME:=1
 else
@@ -178,6 +205,22 @@ else ifeq ($(GO_ARCH),arm)
     GO_ARM:=6
   else
     GO_ARM:=7
+  endif
+
+else ifeq ($(GO_ARCH),arm64)
+  GO_TARGET_CPU:=$(call qstrip,$(CONFIG_CPU_TYPE))
+
+  ifneq ($(filter $(GO_TARGET_CPU),$(GO_ARM64_V8_0_CORES)),)
+    GO_ARM64:=v8.0
+  else ifneq ($(filter $(GO_TARGET_CPU),$(GO_ARM64_V8_2_CORES)),)
+    GO_ARM64:=v8.2
+  else ifneq ($(filter $(GO_TARGET_CPU),$(GO_ARM64_V9_0_CORES)),)
+    GO_ARM64:=v9.0
+  else ifneq ($(filter $(GO_TARGET_CPU),$(GO_ARM64_V9_2_CORES)),)
+    GO_ARM64:=v9.2
+  else
+    # Unknown CPU, assume baseline
+    GO_ARM64:=v8.0
   endif
 
 else ifneq ($(filter $(GO_ARCH),mips mipsle),)
@@ -214,19 +257,22 @@ GO_ARCH_DEPENDS:=@(aarch64||arm||i386||i686||loongarch64||mips||mips64||mips64el
 GO_PIE_SUPPORTED_OS_ARCH:= \
   android_386  android_amd64  android_arm  android_arm64 \
   linux_386    linux_amd64    linux_arm    linux_arm64 \
-  windows_386  windows_amd64  windows_arm  windows_arm64 \
+  \
+  windows_386  windows_amd64  windows_arm64 \
   \
   darwin_amd64 darwin_arm64 \
   ios_amd64    ios_arm64 \
   \
   freebsd_amd64 \
   \
+  openbsd_arm64 \
+  \
   aix_ppc64 \
   \
   linux_loong64 linux_ppc64le linux_riscv64 linux_s390x
 
 # From https://go.dev/src/cmd/go/internal/work/init.go
-go_pie_install_suffix=$(if $(filter $(1),aix_ppc64 windows_386 windows_amd64 windows_arm windows_arm64),,shared)
+go_pie_install_suffix=$(if $(filter $(1),aix_ppc64 windows_386 windows_amd64 windows_arm64),,shared)
 
 ifneq ($(filter $(GO_HOST_OS_ARCH),$(GO_PIE_SUPPORTED_OS_ARCH)),)
   GO_HOST_PIE_SUPPORTED:=1
